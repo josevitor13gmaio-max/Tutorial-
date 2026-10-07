@@ -1,0 +1,207 @@
+name: Windows PC - System Info
+
+on:
+  workflow_dispatch:
+
+jobs:
+  windows-pc:
+    name: Windows PC
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+
+      # ==============================
+      # 1. BAIXAR O REPOSITÓRIO
+      # ==============================
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ==============================
+      # 2. INFORMAÇÕES DO PC
+      # ==============================
+      - name: System Information
+        shell: pwsh
+        run: |
+          Write-Host ""
+          Write-Host "========================================="
+          Write-Host "        WINDOWS PC INFORMATION"
+          Write-Host "========================================="
+          Write-Host ""
+
+          Write-Host "Runner:"
+          Write-Host "$env:RUNNER_NAME"
+          Write-Host ""
+
+          Write-Host "Operating System:"
+          Get-CimInstance Win32_OperatingSystem |
+            Select-Object Caption, Version, OSArchitecture |
+            Format-List
+
+          Write-Host "Computer:"
+          Get-CimInstance Win32_ComputerSystem |
+            Select-Object Manufacturer, Model,
+              @{N="RAM_GB";E={[math]::Round($_.TotalPhysicalMemory/1GB,2)}} |
+            Format-List
+
+      # ==============================
+      # 3. CPU
+      # ==============================
+      - name: CPU Information
+        shell: pwsh
+        run: |
+          Write-Host ""
+          Write-Host "========================================="
+          Write-Host "                 CPU"
+          Write-Host "========================================="
+
+          Get-CimInstance Win32_Processor |
+            Select-Object Name,
+              NumberOfCores,
+              NumberOfLogicalProcessors,
+              MaxClockSpeed |
+            Format-List
+
+      # ==============================
+      # 4. MEMÓRIA RAM
+      # ==============================
+      - name: RAM Information
+        shell: pwsh
+        run: |
+          Write-Host ""
+          Write-Host "========================================="
+          Write-Host "                 RAM"
+          Write-Host "========================================="
+
+          $ram = Get-CimInstance Win32_ComputerSystem
+
+          Write-Host "RAM total:"
+          Write-Host "$([math]::Round($ram.TotalPhysicalMemory / 1GB, 2)) GB"
+
+          Write-Host ""
+          Write-Host "RAM disponível:"
+          $os = Get-CimInstance Win32_OperatingSystem
+          Write-Host "$([math]::Round($os.FreePhysicalMemory / 1MB, 2)) MB"
+
+      # ==============================
+      # 5. ARMAZENAMENTO
+      # ==============================
+      - name: Storage Information
+        shell: pwsh
+        run: |
+          Write-Host ""
+          Write-Host "========================================="
+          Write-Host "              STORAGE"
+          Write-Host "========================================="
+
+          Get-PSDrive -PSProvider FileSystem |
+            Select-Object Name,
+              @{N="Used_GB";E={
+                if ($_.Used) {
+                  [math]::Round($_.Used/1GB,2)
+                } else {
+                  0
+                }
+              }},
+              @{N="Free_GB";E={
+                if ($_.Free) {
+                  [math]::Round($_.Free/1GB,2)
+                } else {
+                  0
+                }
+              }} |
+            Format-Table -AutoSize
+
+      # ==============================
+      # 6. GPU
+      # ==============================
+      - name: GPU Information
+        shell: pwsh
+        run: |
+          Write-Host ""
+          Write-Host "========================================="
+          Write-Host "                 GPU"
+          Write-Host "========================================="
+
+          Get-CimInstance Win32_VideoController |
+            Select-Object Name,
+              DriverVersion,
+              VideoModeDescription |
+            Format-List
+
+      # ==============================
+      # 7. WINDOWS
+      # ==============================
+      - name: Windows Information
+        shell: pwsh
+        run: |
+          Write-Host ""
+          Write-Host "========================================="
+          Write-Host "               WINDOWS"
+          Write-Host "========================================="
+
+          Get-ComputerInfo |
+            Select-Object WindowsProductName,
+              WindowsVersion,
+              OsBuildNumber,
+              OsArchitecture |
+            Format-List
+
+      # ==============================
+      # 8. REDE
+      # ==============================
+      - name: Network Information
+        shell: pwsh
+        run: |
+          Write-Host ""
+          Write-Host "========================================="
+          Write-Host "                NETWORK"
+          Write-Host "========================================="
+
+          Get-NetAdapter |
+            Where-Object Status -eq "Up" |
+            Select-Object Name, InterfaceDescription, LinkSpeed |
+            Format-Table -AutoSize
+
+      # ==============================
+      # 9. TESTE DE DESEMPENHO
+      # ==============================
+      - name: Performance Test
+        shell: pwsh
+        run: |
+          Write-Host ""
+          Write-Host "========================================="
+          Write-Host "          PERFORMANCE TEST"
+          Write-Host "========================================="
+
+          $start = Get-Date
+
+          $total = 0
+
+          for ($i = 1; $i -le 5000000; $i++) {
+            $total += $i
+          }
+
+          $end = Get-Date
+          $time = ($end - $start).TotalSeconds
+
+          Write-Host "Resultado: $total"
+          Write-Host "Tempo: $time segundos"
+
+      # ==============================
+      # 10. RESUMO FINAL
+      # ==============================
+      - name: Final Summary
+        shell: pwsh
+        run: |
+          Write-Host ""
+          Write-Host "========================================="
+          Write-Host "              PC READY"
+          Write-Host "========================================="
+          Write-Host ""
+          Write-Host "Runner: $env:RUNNER_NAME"
+          Write-Host "OS: Windows"
+          Write-Host "Arquitetura: $env:PROCESSOR_ARCHITECTURE"
+          Write-Host ""
+          Write-Host "O ambiente foi configurado e testado."
+          Write-Host "========================================="
